@@ -26,6 +26,7 @@ import com.naliendev.achieveit.ui.theme.BackgroundDark
 import com.naliendev.achieveit.ui.theme.PurplePrimary
 import com.naliendev.achieveit.ui.theme.TextSecondary
 import com.naliendev.achieveit.ui.theme.SurfaceDark
+import com.google.firebase.auth.FirebaseAuth
 
 enum class Screen(val route: String, val title: String, val icon: ImageVector?) {
     Login("login", "Login", null),
@@ -40,6 +41,9 @@ enum class Screen(val route: String, val title: String, val icon: ImageVector?) 
 @Composable
 fun AchieveItApp() {
     val navController = rememberNavController()
+    
+    val auth = FirebaseAuth.getInstance()
+    val startDest = if (auth.currentUser != null) Screen.Home.route else Screen.Login.route
     
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
@@ -90,7 +94,7 @@ fun AchieveItApp() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = Screen.Login.route,
+            startDestination = startDest,
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Login.route) {
