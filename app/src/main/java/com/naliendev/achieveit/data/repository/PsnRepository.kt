@@ -71,33 +71,60 @@ class PsnRepository(
     }
 
     /**
-     * Fetches trophies for a specific game (npCommunicationId).
-     * Requires npServiceName: "trophy" for PS3/PS4/Vita, "trophy2" for PS5/PC.
+     * Fetches trophies for a specific game (npCommunicationId) and merges the progress
+     * with the static trophy metadata (names, details, icon URLs).
      */
     suspend fun getGameTrophies(npCommunicationId: String, npServiceName: String = "trophy"): PsnUserTrophyListResponse? {
         val creds = ensureValidToken() ?: return null
 
         Log.d(TAG, "Fetching trophies for $npCommunicationId with service=$npServiceName")
         return try {
-            PsnClient.api.getUserTrophies(
+            val userTrophies = PsnClient.api.getUserTrophies(
                 authorization = "Bearer ${creds.accessToken}",
                 npCommunicationId = npCommunicationId,
                 npServiceName = npServiceName
             )
+            val metadata = PsnClient.api.getTrophyMetadata(
+                authorization = "Bearer ${creds.accessToken}",
+                npCommunicationId = npCommunicationId,
+                npServiceName = npServiceName
+            )
+            mergeTrophyData(userTrophies, metadata)
         } catch (e: HttpException) {
             if (e.code() == 401) {
                 Log.w(TAG, "Token expired (401) during trophy fetch. Attempting refresh...")
                 val refreshedCreds = forceTokenRefresh(creds) ?: return null
-                PsnClient.api.getUserTrophies(
+                val userTrophies = PsnClient.api.getUserTrophies(
                     authorization = "Bearer ${refreshedCreds.accessToken}",
                     npCommunicationId = npCommunicationId,
                     npServiceName = npServiceName
                 )
+                val metadata = PsnClient.api.getTrophyMetadata(
+                    authorization = "Bearer ${refreshedCreds.accessToken}",
+                    npCommunicationId = npCommunicationId,
+                    npServiceName = npServiceName
+                )
+                mergeTrophyData(userTrophies, metadata)
             } else {
                 Log.e(TAG, "HTTP error fetching trophies: ${e.code()} ${e.message()}")
                 throw e
             }
         }
+    }
+
+    private fun mergeTrophyData(
+        userTrophies: PsnUserTrophyListResponse,
+        metadata: PsnUserTrophyListResponse
+    ): PsnUserTrophyListResponse {
+        val mergedList = userTrophies.trophies.map { userTrophy ->
+            val meta = metadata.trophies.firstOrNull { it.trophyId == userTrophy.trophyId }
+            userTrophy.copy(
+                trophyName = meta?.trophyName ?: userTrophy.trophyName,
+                trophyDetail = meta?.trophyDetail ?: userTrophy.trophyDetail,
+                trophyIconUrl = meta?.trophyIconUrl ?: userTrophy.trophyIconUrl
+            )
+        }
+        return PsnUserTrophyListResponse(trophies = mergedList)
     }
 
     /**
@@ -130,8 +157,11 @@ class PsnRepository(
     private suspend fun refreshWithToken(creds: PsnCredentials): PsnCredentials? {
         return try {
             val tokenResponse = PsnClient.api.getAccessToken(
-                grantType = "refresh_token",
-                refreshToken = creds.refreshToken
+                auth         = PsnClient.BASIC_AUTH,
+                grantType    = "refresh_token",
+                refreshToken = creds.refreshToken,
+                code         = null,
+                redirectUri  = "com.scee.psxandroid.scecompcall://redirect"
             )
             Log.d(TAG, "Token refreshed successfully.")
             prefsRepo.updatePsnTokens(tokenResponse.accessToken, tokenResponse.refreshToken)
@@ -141,6 +171,7 @@ class PsnRepository(
             exchangeNpssoForTokens(creds)
         }
     }
+
 
     /** Force a refresh by trying refresh_token first, then full NPSSO re-exchange. */
     private suspend fun forceTokenRefresh(creds: PsnCredentials): PsnCredentials? {
@@ -157,15 +188,18 @@ class PsnRepository(
     private suspend fun exchangeNpssoForTokens(creds: PsnCredentials): PsnCredentials? {
         Log.d(TAG, "Exchanging NPSSO for auth code...")
         val code = PsnClient.getAccessCode(creds.npsso) ?: run {
-            Log.e(TAG, "NPSSO exchange failed: could not get authorization code. NPSSO may be expired.")
+            Log.e(TAG, "NPSSO exchange failed: could not get authorization code.")
             return null
         }
 
         Log.d(TAG, "Got auth code, exchanging for access token...")
         return try {
             val tokenResponse = PsnClient.api.getAccessToken(
-                grantType = "authorization_code",
-                code = code
+                auth        = PsnClient.BASIC_AUTH,
+                grantType   = "authorization_code",
+                code        = code,
+                refreshToken = null,
+                redirectUri = "com.scee.psxandroid.scecompcall://redirect"
             )
             Log.d(TAG, "Token exchange successful.")
             prefsRepo.updatePsnTokens(tokenResponse.accessToken, tokenResponse.refreshToken)

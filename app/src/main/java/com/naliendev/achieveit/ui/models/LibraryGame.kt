@@ -14,5 +14,6 @@ data class LibraryGame(
 
 enum class Platform(val displayName: String) {
     RETRO_ACHIEVEMENTS("RetroAchievements"),
+    STEAM("Steam"),
     PLAYSTATION("PlayStation")
 }

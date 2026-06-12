@@ -43,9 +43,9 @@ fun LibraryScreen(
 ) {
     val viewModel: LibraryViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
+    val selectedTabIndex by viewModel.selectedTabIndex.collectAsState()
 
     val tabs = listOf("All", "RetroAchievements", "Steam", "PlayStation")
-    var selectedTabIndex by remember { mutableStateOf(0) }
 
     Column(
         modifier = Modifier
@@ -104,7 +104,7 @@ fun LibraryScreen(
             tabs.forEachIndexed { index, title ->
                 Tab(
                     selected = selectedTabIndex == index,
-                    onClick = { selectedTabIndex = index },
+                    onClick = { viewModel.setSelectedTab(index) },
                     text = {
                         Text(
                             title,

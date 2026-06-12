@@ -32,10 +32,38 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     private val psnRepository = PsnRepository(db.psnGameDao())
     private val prefsRepo = UserPrefsRepository()
 
+    // 0 = All, 1 = RetroAchievements, 2 = Steam, 3 = PlayStation
+    private val _selectedTabIndex = MutableStateFlow(0)
+    val selectedTabIndex: StateFlow<Int> = _selectedTabIndex.asStateFlow()
+
+    private val _allGames = MutableStateFlow<List<LibraryGame>>(emptyList())
+    private val _isOffline = MutableStateFlow(false)
+    private val _hasCredentials = MutableStateFlow<Boolean?>(null) // null = unknown
+
     private val _uiState = MutableStateFlow<LibraryUiState>(LibraryUiState.Loading)
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
 
     init {
+        // Combine all games + selected tab → filtered uiState
+        viewModelScope.launch {
+            combine(_allGames, _selectedTabIndex, _isOffline, _hasCredentials) { games, tabIndex, offline, hasCreds ->
+                when {
+                    hasCreds == false -> LibraryUiState.NoCredentials
+                    hasCreds == null -> LibraryUiState.Loading
+                    else -> {
+                        val filtered = when (tabIndex) {
+                            1 -> games.filter { it.platform == Platform.RETRO_ACHIEVEMENTS }
+                            2 -> games.filter { it.platform == Platform.STEAM }
+                            3 -> games.filter { it.platform == Platform.PLAYSTATION }
+                            else -> games // 0 = All
+                        }
+                        LibraryUiState.Success(games = filtered, isOffline = offline)
+                    }
+                }
+            }.collect { _uiState.value = it }
+        }
+
+        // Load data from cache flows
         viewModelScope.launch {
             combine(
                 raRepository.cachedGamesFlow(),
@@ -43,11 +71,12 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                 prefsRepo.raCredentialsFlow(),
                 prefsRepo.psnCredentialsFlow()
             ) { raGames, psnGames, raCreds, psnCreds ->
-                if (raCreds == null && psnCreds == null) {
-                    _uiState.value = LibraryUiState.NoCredentials
-                } else {
+                val hasAny = raCreds != null || psnCreds != null
+                _hasCredentials.value = hasAny
+
+                if (hasAny) {
                     val unifiedGames = mutableListOf<LibraryGame>()
-                    
+
                     unifiedGames.addAll(raGames.map { game ->
                         val progressFraction = if (game.numPossibleAchievements > 0)
                             game.numAwarded.toFloat() / game.numPossibleAchievements.toFloat()
@@ -80,12 +109,8 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                         )
                     })
 
-                    // Sort by last activity descending
                     unifiedGames.sortByDescending { it.lastActivity }
-
-                    if (unifiedGames.isNotEmpty() || (raCreds != null || psnCreds != null)) {
-                        _uiState.value = LibraryUiState.Success(unifiedGames)
-                    }
+                    _allGames.value = unifiedGames
                 }
             }.collect()
         }
@@ -93,23 +118,21 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
         refresh()
     }
 
+    fun setSelectedTab(index: Int) {
+        _selectedTabIndex.value = index
+    }
+
     fun refresh() {
         viewModelScope.launch {
             try {
-                // Fetch in parallel
                 val raJob = launch { raRepository.refreshFromNetwork() }
                 val psnJob = launch { psnRepository.refreshFromNetwork() }
-                
                 raJob.join()
                 psnJob.join()
-                
+                _isOffline.value = false
             } catch (e: Exception) {
                 e.printStackTrace()
-                // Show cached via Flow already, can flag as offline if needed
-                val current = _uiState.value
-                if (current is LibraryUiState.Success) {
-                    _uiState.value = current.copy(isOffline = true)
-                }
+                _isOffline.value = true
             }
         }
     }
