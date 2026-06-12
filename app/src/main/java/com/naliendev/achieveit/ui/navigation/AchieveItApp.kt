@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.LibraryBooks
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -14,14 +15,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.naliendev.achieveit.ui.screens.GameDetailsScreen
 import com.naliendev.achieveit.ui.screens.HomeScreen
 import com.naliendev.achieveit.ui.screens.LibraryScreen
 import com.naliendev.achieveit.ui.screens.LoginScreen
+import com.naliendev.achieveit.ui.screens.SettingsScreen
 import com.naliendev.achieveit.ui.theme.BackgroundDark
 import com.naliendev.achieveit.ui.theme.PurplePrimary
 import com.naliendev.achieveit.ui.theme.TextSecondary
@@ -31,10 +35,11 @@ import com.google.firebase.auth.FirebaseAuth
 enum class Screen(val route: String, val title: String, val icon: ImageVector?) {
     Login("login", "Login", null),
     Home("home", "Home", Icons.Filled.Home),
-    Library("library", "Library", Icons.Filled.LibraryBooks), /* Actually icon is a library */
+    Library("library", "Library", Icons.Filled.LibraryBooks),
     Social("social", "Social", Icons.Filled.Public),
     Profile("profile", "Profile", Icons.Filled.Person),
-    GameDetails("game_details", "Game Details", null),
+    GameDetails("game_details/{gameId}", "Game Details", null),
+    Settings("settings", "Settings", null),
     SignUp("signup", "Sign Up", null)
 }
 
@@ -124,7 +129,7 @@ fun AchieveItApp() {
             composable(Screen.Home.route) {
                 HomeScreen(
                     onGameClick = {
-                        navController.navigate(Screen.GameDetails.route)
+                        // Home screen doesn't have real game IDs yet; navigate without ID
                     },
                     onLogoutClick = {
                         navController.navigate(Screen.Login.route) {
@@ -135,13 +140,28 @@ fun AchieveItApp() {
             }
             composable(Screen.Library.route) {
                 LibraryScreen(
-                    onGameClick = {
-                        navController.navigate(Screen.GameDetails.route)
+                    onGameClick = { gameId ->
+                        navController.navigate("game_details/$gameId")
+                    },
+                    onSettingsClick = {
+                        navController.navigate(Screen.Settings.route)
                     }
                 )
             }
-            composable(Screen.GameDetails.route) {
+            composable(
+                route = Screen.GameDetails.route,
+                arguments = listOf(navArgument("gameId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val gameId = backStackEntry.arguments?.getString("gameId") ?: ""
                 GameDetailsScreen(
+                    gameId = gameId,
+                    onBackClick = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable(Screen.Settings.route) {
+                SettingsScreen(
                     onBackClick = {
                         navController.popBackStack()
                     }

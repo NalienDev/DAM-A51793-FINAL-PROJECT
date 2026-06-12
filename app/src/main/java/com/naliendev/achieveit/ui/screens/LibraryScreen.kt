@@ -5,11 +5,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Gamepad
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
@@ -17,17 +21,30 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.naliendev.achieveit.data.repository.progressFraction
+import com.naliendev.achieveit.ui.models.LibraryGame
 import com.naliendev.achieveit.ui.theme.*
+import com.naliendev.achieveit.ui.viewmodel.LibraryUiState
+import com.naliendev.achieveit.ui.viewmodel.LibraryViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LibraryScreen(onGameClick: () -> Unit) {
-    val tabs = listOf("All Games", "Steam", "PlayStation", "Retro", "Xbox")
+fun LibraryScreen(
+    onGameClick: (String) -> Unit,
+    onSettingsClick: () -> Unit = {}
+) {
+    val viewModel: LibraryViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
+
+    val tabs = listOf("All", "RetroAchievements", "Steam", "PlayStation")
     var selectedTabIndex by remember { mutableStateOf(0) }
 
     Column(
@@ -54,16 +71,21 @@ fun LibraryScreen(onGameClick: () -> Unit) {
                     Icon(Icons.Outlined.Gamepad, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
                 }
                 Spacer(modifier = Modifier.width(12.dp))
-                Text("AchieveIt", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Library", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
-            Row {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Search, contentDescription = "Search", tint = TextPrimary)
                 Spacer(modifier = Modifier.width(16.dp))
-                Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = TextPrimary)
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = TextPrimary,
+                    modifier = Modifier.clickable { onSettingsClick() }
+                )
             }
         }
 
-        // Tabs
+        // Platform tabs
         ScrollableTabRow(
             selectedTabIndex = selectedTabIndex,
             containerColor = BackgroundDark,
@@ -94,121 +116,225 @@ fun LibraryScreen(onGameClick: () -> Unit) {
             }
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 64.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "Your games library will appear here",
-                color = TextSecondary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
-        
-        /* Placeholder UI Commented Out
-        // Section Title
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Your Collection", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("124 Games", color = TextSecondary, fontSize = 14.sp)
+        // Content
+        when (val state = uiState) {
+            is LibraryUiState.NoCredentials -> {
+                LibraryConnectPrompt(onSettingsClick = onSettingsClick)
             }
-            Text("SORT BY RECENT \u25BC", color = PurpleLight, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
 
-        // Grid
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            items(6) { index ->
-                val mockData = getMockDataForIndex(index)
-                LibraryGameCard(
-                    title = mockData.title,
-                    platform = mockData.platform,
-                    progress = mockData.progress,
-                    progressLabel = mockData.progressLabel,
-                    gradientColors = mockData.gradientColors,
-                    onClick = onGameClick
-                )
+            is LibraryUiState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator(color = PurplePrimary)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Loading your library...", color = TextSecondary, fontSize = 14.sp)
+                    }
+                }
+            }
+
+            is LibraryUiState.Success -> {
+                // Offline badge
+                if (state.isOffline) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(SurfaceDark)
+                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.Default.WifiOff, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Offline — showing cached data", color = TextSecondary, fontSize = 12.sp)
+                    }
+                }
+
+                // Game count header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Your Collection", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("${state.games.size} Games", color = TextSecondary, fontSize = 13.sp)
+                    }
+                    TextButton(onClick = { viewModel.refresh() }) {
+                        Text("Refresh", color = PurpleLight, fontSize = 12.sp)
+                    }
+                }
+
+                // Game grid
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    items(state.games, key = { it.id }) { game ->
+                        RealGameCard(game = game, onClick = { onGameClick(game.id) })
+                    }
+                }
+            }
+
+            is LibraryUiState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(32.dp)
+                    ) {
+                        Text("Something went wrong", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(state.message, color = TextSecondary, fontSize = 14.sp)
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = { viewModel.refresh() },
+                            colors = ButtonDefaults.buttonColors(containerColor = PurplePrimary)
+                        ) {
+                            Text("Try Again")
+                        }
+                    }
+                }
             }
         }
-        */
-    }
-}
-
-data class LibraryMock(val title: String, val platform: String, val progress: Float, val progressLabel: String, val gradientColors: List<Color>)
-
-fun getMockDataForIndex(index: Int): LibraryMock {
-    return when(index) {
-        0 -> LibraryMock("Elden Ring", "Steam", 0.85f, "85%", listOf(Color(0xFFE2C8A8), Color(0xFF3E3A35)))
-        1 -> LibraryMock("God of War: Ragnarök", "PlayStation", 1.0f, "Plat", listOf(Color(0xFF8198AB), Color(0xFF16222A)))
-        2 -> LibraryMock("Sonic Mania", "RetroAchievements", 0.42f, "42%", listOf(Color(0xFF5E9CFF), Color(0xFF0F2027)))
-        3 -> LibraryMock("Hades", "Steam", 0.68f, "68%", listOf(Color(0xFF8E3B46), Color(0xFF1C1115)))
-        4 -> LibraryMock("Spider-Man 2", "PlayStation", 0.92f, "92%", listOf(Color(0xFFEFE8CE), Color(0xFF4A4E53)))
-        else -> LibraryMock("Celeste", "Steam", 0.15f, "15%", listOf(Color(0xFFC7B1A6), Color(0xFF382329)))
     }
 }
 
 @Composable
-fun LibraryGameCard(title: String, platform: String, progress: Float, progressLabel: String, gradientColors: List<Color>, onClick: () -> Unit) {
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .clickable { onClick() }) {
+fun LibraryConnectPrompt(onSettingsClick: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Text("No platforms connected", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Connect your gaming accounts in Settings → Integrations to see your library.",
+                color = TextSecondary,
+                fontSize = 14.sp,
+                lineHeight = 20.sp
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = onSettingsClick,
+                colors = ButtonDefaults.buttonColors(containerColor = PurplePrimary),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Open Settings", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun RealGameCard(
+    game: LibraryGame,
+    onClick: () -> Unit
+) {
+    val progress = game.progressFraction
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(0.75f)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Brush.verticalGradient(colors = gradientColors)),
+                .aspectRatio(0.85f)
+                .clip(RoundedCornerShape(14.dp))
+                .background(SurfaceDark),
             contentAlignment = Alignment.BottomStart
         ) {
-            // Platform Icon Mock
+            AsyncImage(
+                model = game.imageUrl,
+                contentDescription = game.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Platform Badge
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
+                    .align(Alignment.TopStart)
                     .padding(8.dp)
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.5f)),
-                contentAlignment = Alignment.Center
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (game.isPsn) Color(0xFF003791).copy(alpha = 0.85f) else PurplePrimary.copy(alpha = 0.85f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
-                Icon(Icons.Outlined.Gamepad, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                Text(
+                    game.platform.displayName,
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
-            // Progress Bar
-            Row(
+            // Mastered badge
+            if (game.totalTrophies > 0 && game.earnedTrophies >= game.totalTrophies) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(24.dp)
+                        .clip(CircleShape)
+                        .background(Gold),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Outlined.EmojiEvents, contentDescription = "Mastered", tint = Color.Black, modifier = Modifier.size(16.dp))
+                }
+            }
+
+            // Progress bar at the bottom
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .padding(8.dp)
             ) {
                 LinearProgressIndicator(
-                    progress = progress,
+                    progress = { progress },
                     modifier = Modifier
-                        .weight(1f)
-                        .height(4.dp)
+                        .fillMaxWidth()
+                        .height(3.dp)
                         .clip(RoundedCornerShape(2.dp)),
-                    color = PurplePrimary,
+                    color = if (progress >= 1f) Color(0xFFFFD700) else PurplePrimary,
                     trackColor = ProgressTrack
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(progressLabel, color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        "${game.earnedTrophies}/${game.totalTrophies}",
+                        color = Color.White.copy(alpha = 0.8f),
+                        fontSize = 9.sp
+                    )
+                    Text(
+                        "${(progress * 100).toInt()}%",
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(title, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        Text(platform, color = TextSecondary, fontSize = 12.sp)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            game.title,
+            color = TextPrimary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(game.platform.displayName, color = TextSecondary, fontSize = 12.sp)
     }
 }
