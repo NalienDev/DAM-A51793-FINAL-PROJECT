@@ -45,7 +45,7 @@ android {
         // Compose compiler version is managed by the Kotlin Compose compiler plugin 2.0.20
     }
     packaging {
-        resources {
+        resources   {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }

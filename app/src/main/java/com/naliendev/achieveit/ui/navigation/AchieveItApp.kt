@@ -2,6 +2,9 @@ package com.naliendev.achieveit.ui.navigation
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.LibraryBooks
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Book
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.LibraryBooks
@@ -31,12 +34,13 @@ import com.naliendev.achieveit.ui.theme.PurplePrimary
 import com.naliendev.achieveit.ui.theme.TextSecondary
 import com.naliendev.achieveit.ui.theme.SurfaceDark
 import com.google.firebase.auth.FirebaseAuth
+import com.naliendev.achieveit.ui.screens.TrophieScreen
 
 enum class Screen(val route: String, val title: String, val icon: ImageVector?) {
     Login("login", "Login", null),
     Home("home", "Home", Icons.Filled.Home),
-    Library("library", "Library", Icons.Filled.LibraryBooks),
-    Social("social", "Social", Icons.Filled.Public),
+    Library("library", "Library", Icons.AutoMirrored.Filled.LibraryBooks),
+    Trophie("trophie", "Trophie", Icons.Filled.AutoAwesome),
     Profile("profile", "Profile", Icons.Filled.Person),
     GameDetails("game_details/{gameId}", "Game Details", null),
     Settings("settings", "Settings", null),
@@ -57,7 +61,7 @@ fun AchieveItApp() {
     val items = listOf(
         Screen.Home,
         Screen.Library,
-        Screen.Social,
+        Screen.Trophie,
         Screen.Profile
     )
     
@@ -167,8 +171,8 @@ fun AchieveItApp() {
                     }
                 )
             }
-            composable(Screen.Social.route) {
-                // Placeholder
+            composable(Screen.Trophie.route) {
+                TrophieScreen()
             }
             composable(Screen.Profile.route) {
                 // Placeholder
