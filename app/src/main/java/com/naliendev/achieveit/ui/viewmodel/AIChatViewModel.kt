@@ -59,21 +59,10 @@ class AIChatViewModel : ViewModel() {
                         currentAssistant.processInput(text)
                     }
                     
-                    // Optional: process sentiment as well
-                    val sentiment = try {
-                        withContext(Dispatchers.IO) {
-                            currentAssistant.processSentiment(text)
-                        }
-                    } catch (t: Throwable) {
-                        Log.w("AIChatViewModel", "Sentiment analysis failed", t)
-                        null
-                    }
-                    
                     _messages.add(
                         ChatMessage(
                             text = response,
                             sender = MessageSender.AI,
-                            sentiment = sentiment
                         )
                     )
                 } else {

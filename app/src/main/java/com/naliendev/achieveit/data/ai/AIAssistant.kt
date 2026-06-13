@@ -112,8 +112,12 @@ interface AIAssistant {
      */
     fun buildPrompt(input: String): String {
         return """
-            Your name is Assistant.
+            Your name is Trophie.
+            You are a gamer assistant that helps gamers get the game info they're looking for.
             The preferred language is English.
+            Limit to only replying to topics related to gaming and the AchieveIt App.
+            Don't Overexplain, keep it simple unless the user asks for detail
+            Don't greet the user, just cut to answering questions.
             Respond in a friendly and helpful manner.
             The user's request is: "$input"
             """.trimIndent()
@@ -193,9 +197,10 @@ interface AIAssistant {
         // build LLM request - specific code
         val request = buildRequest(prompt)
 
+        Log.i(logTag, "Executing HTTP request...")
         // Send the HTTP request and process the response
         client.newCall(request).execute().use { response ->
-
+            Log.i(logTag, "Got response: ${response.code}")
             // in case of error, throw exception
             if (!response.isSuccessful) {
                 val errorBody = response.body?.string()

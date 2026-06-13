@@ -1,6 +1,7 @@
 package com.naliendev.achieveit.data.ai
 
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
@@ -19,12 +20,20 @@ class AIAssistantOpenAI(override val properties: Properties) : AIAssistant {
     override fun getSystem() = "OPENAI"
     override val apiKeyName = "OPENAI_API_KEY"
 
+    override val client: OkHttpClient by lazy {
+        OkHttpClient.Builder()
+            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .writeTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+    }
+
     // Model selection - uncomment the desired model
     // Different models have different capabilities, costs, and response characteristics
     // private var model = "gpt-3.5-turbo" // OK - Faster, less expensive, good for most tasks
     //private var model = "gpt-4"  // OK - More capable, better reasoning, more expensive
     // private var model = "o1"  // OK - Multi-modal model, can handle images
-    override var model = "meta/llama-3.1-8b-instruct" //  OK - Optimized version of GPT-4
+    override var model = "llama-3.3-70b-versatile" //  OK - Optimized version of GPT-4
     // private var model = "o3-mini" // OK - Smaller, faster version with reduced capabilities
     // private var model = "gpt-4o-mini" // OK - Smaller optimized model
     // private var model = "o3-mini-high" // not working - an Experimental model
@@ -65,7 +74,7 @@ class AIAssistantOpenAI(override val properties: Properties) : AIAssistant {
 
         // Configure the HTTP request with proper headers and authentication
         val request = Request.Builder()
-            .url("https://integrate.api.nvidia.com/v1/chat/completions")  // OpenAI chat endpoint
+            .url("https://api.groq.com/openai/v1/chat/completions")  // OpenAI chat endpoint
             .addHeader("Authorization", "Bearer $apiKey")  // API key authentication
             .addHeader("Content-Type", "application/json")  // Specify content type
             .post(requestBody.toRequestBody("application/json".toMediaTypeOrNull()))  // Set the request body

@@ -11,5 +11,4 @@ data class ChatMessage(
     val text: String,
     val sender: MessageSender,
     val timestamp: Long = System.currentTimeMillis(),
-    val sentiment: String? = null
 )

@@ -48,7 +48,7 @@ fun TrophieScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "AI Assistant",
+                        "Trophie - Your Gaming Assistant",
                         color = TextPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
@@ -193,16 +193,6 @@ fun MessageBubble(message: ChatMessage) {
                     color = textColor,
                     fontSize = 15.sp
                 )
-                
-                if (!isUser && message.sentiment != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Sentiment analysis: ${message.sentiment}",
-                        color = TextSecondary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Light
-                    )
-                }
             }
         }
         
