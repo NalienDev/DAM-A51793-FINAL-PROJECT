@@ -60,10 +60,27 @@ fun SettingsScreen(onBackClick: () -> Unit) {
     var isDisconnectingPsn by remember { mutableStateOf(false) }
     var showPsnForm by remember { mutableStateOf(false) }
 
+    // Observe current Steam credentials from Firebase
+    val steamCredentials by prefsRepo.steamCredentialsFlow().collectAsState(initial = null)
+
+    // Local form state - Steam
+    var steamId by remember { mutableStateOf("") }
+    var steamApiKey by remember { mutableStateOf("") }
+    var showSteamApiKey by remember { mutableStateOf(false) }
+    var isSavingSteam by remember { mutableStateOf(false) }
+    var isDisconnectingSteam by remember { mutableStateOf(false) }
+    var showSteamForm by remember { mutableStateOf(false) }
+
     // Sync form fields when credentials load
     LaunchedEffect(credentials) {
         if (credentials != null && raUsername.isBlank()) {
             raUsername = credentials!!.username
+        }
+    }
+
+    LaunchedEffect(steamCredentials) {
+        if (steamCredentials != null && steamId.isBlank()) {
+            steamId = steamCredentials!!.steamId
         }
     }
 
@@ -455,8 +472,185 @@ fun SettingsScreen(onBackClick: () -> Unit) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Future integration placeholders
-        IntegrationComingSoonCard("Steam")
+        // Steam card
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(SurfaceDark)
+        ) {
+            Column(modifier = Modifier.padding(20.dp)) {
+                // Header row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            "Steam",
+                            color = TextPrimary,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            if (steamCredentials != null) "Connected" else "Not connected",
+                            color = if (steamCredentials != null) Color(0xFF4CAF50) else TextSecondary,
+                            fontSize = 13.sp
+                        )
+                    }
+                    if (steamCredentials != null) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF4CAF50).copy(alpha = 0.15f))
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Check,
+                                contentDescription = "Connected",
+                                tint = Color(0xFF4CAF50),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (steamCredentials != null && !showSteamForm) {
+                    // Connected state
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedButton(
+                            onClick = { showSteamForm = true },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PurpleLight),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, PurplePrimary),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Edit credentials")
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                scope.launch {
+                                    isDisconnectingSteam = true
+                                    prefsRepo.clearSteamCredentials()
+                                    steamId = ""
+                                    steamApiKey = ""
+                                    isDisconnectingSteam = false
+                                    Toast.makeText(context, "Steam disconnected", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFEF5350)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF5350).copy(alpha = 0.5f)),
+                            modifier = Modifier.weight(1f),
+                            enabled = !isDisconnectingSteam
+                        ) {
+                            if (isDisconnectingSteam) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color(0xFFEF5350), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.LinkOff, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Disconnect")
+                            }
+                        }
+                    }
+                } else {
+                    // Form
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = steamId,
+                            onValueChange = { steamId = it },
+                            label = { Text("Steam ID (64-bit)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PurplePrimary,
+                                unfocusedBorderColor = SurfaceVariantDark,
+                                focusedLabelColor = PurplePrimary,
+                                unfocusedLabelColor = TextSecondary,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                cursorColor = PurplePrimary
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value = steamApiKey,
+                            onValueChange = { steamApiKey = it },
+                            label = { Text("Web API Key") },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            visualTransformation = if (showSteamApiKey) VisualTransformation.None else PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            trailingIcon = {
+                                TextButton(onClick = { showSteamApiKey = !showSteamApiKey }) {
+                                    Text(if (showSteamApiKey) "Hide" else "Show", color = PurpleLight, fontSize = 12.sp)
+                                }
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PurplePrimary,
+                                unfocusedBorderColor = SurfaceVariantDark,
+                                focusedLabelColor = PurplePrimary,
+                                unfocusedLabelColor = TextSecondary,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                cursorColor = PurplePrimary
+                            )
+                        )
+
+                        Text(
+                            "Find your Steam ID at steamid.io and your API key at steamcommunity.com/dev/apikey",
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp
+                        )
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            if (showSteamForm && steamCredentials != null) {
+                                OutlinedButton(
+                                    onClick = { showSteamForm = false; steamApiKey = "" },
+                                    modifier = Modifier.weight(1f),
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, SurfaceVariantDark)
+                                ) { Text("Cancel") }
+                            }
+
+                            Button(
+                                onClick = {
+                                    if (steamId.isBlank() || steamApiKey.isBlank()) {
+                                        Toast.makeText(context, "Please fill in both fields", Toast.LENGTH_SHORT).show()
+                                        return@Button
+                                    }
+                                    scope.launch {
+                                        isSavingSteam = true
+                                        try {
+                                            prefsRepo.saveSteamCredentials(steamId.trim(), steamApiKey.trim())
+                                            showSteamForm = false
+                                            steamApiKey = ""
+                                            Toast.makeText(context, "Steam connected!", Toast.LENGTH_SHORT).show()
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Failed to save: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        } finally {
+                                            isSavingSteam = false
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                enabled = !isSavingSteam,
+                                colors = ButtonDefaults.buttonColors(containerColor = PurplePrimary)
+                            ) {
+                                if (isSavingSteam) {
+                                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.White, strokeWidth = 2.dp)
+                                } else {
+                                    Text("Connect", color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(32.dp))
     }

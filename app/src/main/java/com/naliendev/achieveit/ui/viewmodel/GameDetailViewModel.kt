@@ -60,6 +60,52 @@ class GameDetailViewModel(application: Application) : AndroidViewModel(applicati
                     } else {
                         _uiState.value = GameDetailUiState.Error("No credentials saved.")
                     }
+                } else if (gameId.startsWith("steam_")) {
+                    val steamRepository = com.naliendev.achieveit.data.repository.SteamRepository(db.steamGameDao())
+                    val appId = gameId.removePrefix("steam_").toIntOrNull()
+                    if (appId != null) {
+                        val response = steamRepository.getGameSchemaAndStats(appId)
+                        if (response != null) {
+                            val (schema, stats) = response
+                            val achievements = schema?.availableGameStats?.achievements ?: emptyList()
+                            val playerStats = stats?.achievements ?: emptyList()
+                            val achievedMap = playerStats.associateBy { it.apiname }
+                            
+                            val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                            val cachedGame = db.steamGameDao().getGame(uid, appId)
+                            
+                            val unifiedDetail = UnifiedGameDetail(
+                                title = schema?.gameName ?: cachedGame?.name ?: "Steam Game",
+                                description = "Steam",
+                                imageUrl = cachedGame?.iconUrl ?: "",
+                                earnedTrophies = playerStats.count { it.achieved == 1 },
+                                totalTrophies = achievements.size,
+                                trophies = achievements.map { ach ->
+                                    val playerAch = achievedMap[ach.name]
+                                    val isEarned = playerAch?.achieved == 1
+                                    val earnedDateStr = if (isEarned && playerAch != null) {
+                                        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+                                            .format(java.util.Date(playerAch.unlocktime * 1000))
+                                    } else ""
+                                    
+                                    UnifiedTrophy(
+                                        id = ach.name,
+                                        title = ach.displayName,
+                                        description = ach.description ?: "",
+                                        imageUrl = if (isEarned) ach.icon else ach.icongray,
+                                        isEarned = isEarned,
+                                        earnedDate = earnedDateStr,
+                                        type = "Achievement"
+                                    )
+                                }
+                            )
+                            _uiState.value = GameDetailUiState.Success(unifiedDetail)
+                        } else {
+                            _uiState.value = GameDetailUiState.Error("Failed to fetch Steam stats.")
+                        }
+                    } else {
+                        _uiState.value = GameDetailUiState.Error("Invalid Steam App ID.")
+                    }
                 } else {
                     val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
                     val cachedGame = db.psnGameDao().getGame(uid, gameId)

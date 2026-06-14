@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.naliendev.achieveit.data.local.AchieveItDatabase
 import com.naliendev.achieveit.data.repository.PsnRepository
 import com.naliendev.achieveit.data.repository.RaRepository
+import com.naliendev.achieveit.data.repository.SteamRepository
 import com.naliendev.achieveit.data.repository.UserPrefsRepository
 import com.naliendev.achieveit.data.repository.UserProfile
 import kotlinx.coroutines.flow.*
@@ -27,6 +28,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
     private val db = AchieveItDatabase.getInstance(application)
     private val raRepository = RaRepository(db.raGameDao())
     private val psnRepository = PsnRepository(db.psnGameDao())
+    private val steamRepository = SteamRepository(db.steamGameDao())
     private val prefsRepo = UserPrefsRepository()
 
     private val _uiState = MutableStateFlow(ProfileUiState())
@@ -34,14 +36,21 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
     init {
         viewModelScope.launch {
+            val combinedCreds = combine(
+                prefsRepo.raCredentialsFlow(),
+                prefsRepo.psnCredentialsFlow(),
+                prefsRepo.steamCredentialsFlow()
+            ) { ra, psn, steam -> Triple(ra, psn, steam) }
+
             combine(
                 prefsRepo.userProfileFlow(),
                 raRepository.cachedGamesFlow(),
                 psnRepository.cachedGamesFlow(),
-                prefsRepo.raCredentialsFlow(),
-                prefsRepo.psnCredentialsFlow()
-            ) { profile, raGames, psnGames, raCreds, psnCreds ->
-                val hasAnyCreds = raCreds != null || psnCreds != null
+                steamRepository.cachedGamesFlow(),
+                combinedCreds
+            ) { profile, raGames, psnGames, steamGames, creds ->
+                val (raCreds, psnCreds, steamCreds) = creds
+                val hasAnyCreds = raCreds != null || psnCreds != null || steamCreds != null
                 
                 val authUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
                 val finalDisplayName = profile.displayName.ifBlank {
@@ -71,12 +80,14 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                         platinumTrophies = 0
                     )
                 } else {
-                    val actualPlaytimeHours = 0
-                    val playtimeStr = "${actualPlaytimeHours}h"
+                    val steamTotalMinutes = steamGames.sumOf { it.playtimeMinutes }
+                    val actualPlaytimeHours = steamTotalMinutes / 60
+                    val playtimeStr = String.format(java.util.Locale.US, "%,d", actualPlaytimeHours) + "h"
 
                     val perfectRa = raGames.count { it.numPossibleAchievements > 0 && it.numAwarded == it.numPossibleAchievements }
                     val perfectPsn = psnGames.count { it.progress >= 100 }
-                    val perfectCount = perfectRa + perfectPsn
+                    val perfectSteam = steamGames.count { it.totalAchievements > 0 && it.earnedAchievements == it.totalAchievements }
+                    val perfectCount = perfectRa + perfectPsn + perfectSteam
 
                     val platinums = psnGames.sumOf { it.earnedPlatinum }
 
@@ -91,6 +102,12 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                     psnGames.forEach { game ->
                         totalProgress += game.progress.toFloat()
                         gameCountWithProgress++
+                    }
+                    steamGames.forEach { game ->
+                        if (game.totalAchievements > 0) {
+                            totalProgress += (game.earnedAchievements.toFloat() / game.totalAchievements.toFloat()) * 100f
+                            gameCountWithProgress++
+                        }
                     }
                     val avgCompletion = if (gameCountWithProgress > 0) {
                         (totalProgress / gameCountWithProgress).toInt()

@@ -6,12 +6,15 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.naliendev.achieveit.data.local.psn.PsnGameDao
 import com.naliendev.achieveit.data.local.psn.PsnGameEntity
+import com.naliendev.achieveit.data.local.steam.SteamGameDao
+import com.naliendev.achieveit.data.local.steam.SteamGameEntity
 
-@Database(entities = [RaGameEntity::class, PsnGameEntity::class], version = 3, exportSchema = false)
+@Database(entities = [RaGameEntity::class, PsnGameEntity::class, SteamGameEntity::class], version = 4, exportSchema = false)
 abstract class AchieveItDatabase : RoomDatabase() {
 
     abstract fun raGameDao(): RaGameDao
     abstract fun psnGameDao(): PsnGameDao
+    abstract fun steamGameDao(): SteamGameDao
 
     companion object {
         @Volatile

@@ -13,6 +13,7 @@ import kotlinx.coroutines.tasks.await
 import com.google.firebase.auth.UserProfileChangeRequest
 
 data class RaCredentials(val username: String, val apiKey: String)
+data class SteamCredentials(val steamId: String, val apiKey: String)
 data class UserProfile(val displayName: String = "", val bio: String = "", val avatarUrl: String = "")
 
 /**
@@ -152,6 +153,44 @@ class UserPrefsRepository {
     suspend fun clearPsnCredentials() {
         val uid = uid ?: return
         db.child("users").child(uid).child("integrations").child("playstation")
+            .removeValue()
+            .await()
+    }
+
+    /** Observe Steam credentials as a Flow. Emits null if not set. */
+    fun steamCredentialsFlow(): Flow<SteamCredentials?> = callbackFlow {
+        val uid = uid ?: run { trySend(null); close(); return@callbackFlow }
+        val ref = db.child("users").child(uid).child("integrations").child("steam")
+
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val steamId = snapshot.child("steamId").getValue(String::class.java)
+                val apiKey = snapshot.child("apiKey").getValue(String::class.java)
+                trySend(
+                    if (!steamId.isNullOrBlank() && !apiKey.isNullOrBlank())
+                        SteamCredentials(steamId, apiKey)
+                    else null
+                )
+            }
+            override fun onCancelled(error: DatabaseError) { trySend(null) }
+        }
+
+        ref.addValueEventListener(listener)
+        awaitClose { ref.removeEventListener(listener) }
+    }
+
+    /** Save Steam credentials to Firebase. */
+    suspend fun saveSteamCredentials(steamId: String, apiKey: String) {
+        val uid = uid ?: return
+        db.child("users").child(uid).child("integrations").child("steam")
+            .updateChildren(mapOf("steamId" to steamId, "apiKey" to apiKey))
+            .await()
+    }
+
+    /** Remove Steam credentials from Firebase. */
+    suspend fun clearSteamCredentials() {
+        val uid = uid ?: return
+        db.child("users").child(uid).child("integrations").child("steam")
             .removeValue()
             .await()
     }
