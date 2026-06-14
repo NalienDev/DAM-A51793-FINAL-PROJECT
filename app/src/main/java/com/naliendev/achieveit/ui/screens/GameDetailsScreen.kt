@@ -170,9 +170,6 @@ private fun GameDetailContent(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                     }
                     Text("Game Details", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    IconButton(onClick = { /* share */ }) {
-                        Icon(Icons.Default.Share, contentDescription = "Share", tint = Color.White)
-                    }
                 }
 
                 // Game info overlay at bottom

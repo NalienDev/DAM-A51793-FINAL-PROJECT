@@ -23,9 +23,13 @@ import androidx.compose.ui.unit.sp
 import com.naliendev.achieveit.ui.theme.*
 
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import com.google.firebase.auth.FirebaseAuth
+import com.naliendev.achieveit.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,20 +63,12 @@ fun LoginScreen(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(PurplePrimary),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.VideogameAsset,
-                    contentDescription = "Gamepad",
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
-                )
-            }
+            Image(
+                painter = painterResource(id = R.drawable.background),
+                contentDescription = "Hero Background",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -202,40 +198,6 @@ fun LoginScreen(
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-
-        // Or continue with
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Divider(modifier = Modifier.weight(1f), color = SurfaceVariantDark)
-            Text(
-                "OR CONTINUE WITH",
-                color = TextSecondary,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            Divider(modifier = Modifier.weight(1f), color = SurfaceVariantDark)
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        OutlinedButton(
-            onClick = { /* TODO */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
-            border = null
-        ) {
-            // Using placeholder text since we don't have google icon
-            Text(
-                text = "G  Login with Google",
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
 
         Spacer(modifier = Modifier.weight(1f))
 
