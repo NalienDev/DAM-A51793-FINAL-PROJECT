@@ -63,7 +63,7 @@ fun TrophieScreenContent(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        "Trophie - Your Gaming Assistant",
+                        "Trophie",
                         color = TextPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold

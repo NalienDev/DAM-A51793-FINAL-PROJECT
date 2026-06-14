@@ -11,10 +11,6 @@ import kotlinx.coroutines.withContext
 
 object PsnClient {
 
-    // ── OAuth client credentials ──────────────────────────────────────────
-    // If these start failing again with 401 "Bad client credentials",
-    // check https://github.com/psn-api/psn-api or
-    // https://github.com/andshrew/PlayStation-Trophies for updated values.
     const val CLIENT_ID     = "09515159-7237-4370-9b40-3806e67c0891"
     const val CLIENT_SECRET = "ucPjka5tntB2KqsP"
 

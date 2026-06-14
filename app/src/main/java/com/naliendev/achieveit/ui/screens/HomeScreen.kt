@@ -135,14 +135,12 @@ fun HomeScreen(
                 icon = { Icon(Icons.Outlined.Gamepad, contentDescription = null, tint = PurplePrimary) },
                 title = "TOTAL GAMES",
                 value = totalGamesStr,
-                trend = "+2"
             )
             StatCard(
                 modifier = Modifier.weight(1f),
                 icon = { Icon(Icons.Outlined.EmojiEvents, contentDescription = null, tint = PurpleLight) },
                 title = "ACHIEVEMENTS",
                 value = totalAchievementsStr,
-                trend = "+45"
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
@@ -161,7 +159,6 @@ fun HomeScreen(
                     verticalAlignment = Alignment.Top
                 ) {
                     Icon(Icons.Outlined.Insights, contentDescription = null, tint = PurplePrimary)
-                    Text("+1.2%", color = Color(0xFF4CAF50), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("COMPLETION", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
@@ -188,9 +185,9 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 items(2) { index ->
-                    val title = if (index == 0) "Cyber Nexus 2077" else "Elder Realms"
-                    val subtitle = if (index == 0) "Played 2h ago" else "Played yesterday"
-                    val progress = if (index == 0) 0.85f else 0.42f
+                    val title = if (index == 0) "Loading..." else "Loading..."
+                    val subtitle = if (index == 0) "..." else "..."
+                    val progress = if (index == 0) 0.0f else 0.0f
                     GameCardMock(
                         title = title,
                         subtitle = subtitle,
@@ -282,7 +279,7 @@ fun RealGameCardHome(game: LibraryGame, onClick: () -> Unit) {
 }
 
 @Composable
-fun StatCard(modifier: Modifier = Modifier, icon: @Composable () -> Unit, title: String, value: String, trend: String) {
+fun StatCard(modifier: Modifier = Modifier, icon: @Composable () -> Unit, title: String, value: String) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
@@ -296,7 +293,6 @@ fun StatCard(modifier: Modifier = Modifier, icon: @Composable () -> Unit, title:
                 verticalAlignment = Alignment.Top
             ) {
                 icon()
-                Text(trend, color = Color(0xFF4CAF50), fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(16.dp))
             Text(title, color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)

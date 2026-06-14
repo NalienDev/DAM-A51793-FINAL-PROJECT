@@ -51,7 +51,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 }
 
                 val finalBio = profile.bio.ifBlank {
-                    if (hasAnyCreds) "Achievement hunter. Speedrunner in training. Lover of all things RPG."
+                    if (hasAnyCreds) "Achievement hunter."
                     else "Connect your accounts in settings to start tracking achievements!"
                 }
 
@@ -71,8 +71,6 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                         platinumTrophies = 0
                     )
                 } else {
-                    // Playtime: PlayStation and RetroAchievements do not send playtime data in our schema.
-                    // We only display actual playtime from platforms that send that data (which is 0 hours for these).
                     val actualPlaytimeHours = 0
                     val playtimeStr = "${actualPlaytimeHours}h"
 

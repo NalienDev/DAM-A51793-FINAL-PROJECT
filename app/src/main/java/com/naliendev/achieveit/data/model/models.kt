@@ -18,12 +18,12 @@ data class Game(
     val coverImage: String,
     val completionPercentage: Float,
     val releaseYear: Int = 2024,
-    val genre: String = "Action-Adventure",
-    val description: String = "Embark on an odyssey through the neon-drenched corridors...",
+    val genre: String = "Loading...",
+    val description: String = "...",
     val totalTrophies: Int = 62,
     val earnedTrophies: Int = 42,
     val playTimeHours: Int = 0,
-    val lastPlayed: String = "2h ago"
+    val lastPlayed: String = "..."
 )
 
 data class Achievement(

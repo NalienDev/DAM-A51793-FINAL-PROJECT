@@ -1,14 +1,14 @@
 package com.naliendev.achieveit.ui.models
 
 data class LibraryGame(
-    val id: String, // gameId for RA, npCommunicationId for PSN
+    val id: String,
     val title: String,
-    val platform: Platform, // e.g. "PS5", "PS4", "RetroAchievements", or Console Name
+    val platform: Platform,
     val imageUrl: String,
     val progressFraction: Float,
     val earnedTrophies: Int,
     val totalTrophies: Int,
-    val lastActivity: String, // for sorting
+    val lastActivity: String,
     val isPsn: Boolean
 )
 

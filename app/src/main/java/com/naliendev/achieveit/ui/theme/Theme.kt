@@ -26,7 +26,7 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun AchieveItTheme(
-    darkTheme: Boolean = true, // We force dark theme based on design
+    darkTheme: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = DarkColorScheme

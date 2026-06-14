@@ -61,7 +61,6 @@ class GameDetailViewModel(application: Application) : AndroidViewModel(applicati
                         _uiState.value = GameDetailUiState.Error("No credentials saved.")
                     }
                 } else {
-                    // It's a PSN game — look up npServiceName from the cached game first
                     val uid = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid ?: ""
                     val cachedGame = db.psnGameDao().getGame(uid, gameId)
                     val npServiceName = cachedGame?.npServiceName ?: "trophy"
