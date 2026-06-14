@@ -32,7 +32,6 @@ fun getProperties(): Properties = configProperties
 private fun loadProperties(): Properties {
     val properties = Properties()
     try {
-        // 1. Try loading via ClassLoader (works on Android if file is in src/main/resources)
         val resourceStream: InputStream? = Thread.currentThread().contextClassLoader.getResourceAsStream(CONFIG_FILE_NAME)
             ?: Any().javaClass.classLoader.getResourceAsStream(CONFIG_FILE_NAME)
 

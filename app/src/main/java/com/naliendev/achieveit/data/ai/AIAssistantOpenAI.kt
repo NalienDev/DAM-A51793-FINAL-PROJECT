@@ -28,17 +28,7 @@ class AIAssistantOpenAI(override val properties: Properties) : AIAssistant {
             .build()
     }
 
-    // Model selection - uncomment the desired model
-    // Different models have different capabilities, costs, and response characteristics
-    // private var model = "gpt-3.5-turbo" // OK - Faster, less expensive, good for most tasks
-    //private var model = "gpt-4"  // OK - More capable, better reasoning, more expensive
-    // private var model = "o1"  // OK - Multi-modal model, can handle images
-    override var model = "llama-3.3-70b-versatile" //  OK - Optimized version of GPT-4
-    // private var model = "o3-mini" // OK - Smaller, faster version with reduced capabilities
-    // private var model = "gpt-4o-mini" // OK - Smaller optimized model
-    // private var model = "o3-mini-high" // not working - an Experimental model
-    // private var model = "gpt-4.5" // not working - Future model not yet available
-
+    override var model = "llama-3.3-70b-versatile"
 
     /**
      * Constructs and formats a structured request from the given input prompt.

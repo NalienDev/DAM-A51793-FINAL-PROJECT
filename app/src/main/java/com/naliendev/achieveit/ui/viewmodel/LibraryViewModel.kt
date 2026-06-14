@@ -36,17 +36,26 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     private val _selectedTabIndex = MutableStateFlow(0)
     val selectedTabIndex: StateFlow<Int> = _selectedTabIndex.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
     private val _allGames = MutableStateFlow<List<LibraryGame>>(emptyList())
+    val allGames: StateFlow<List<LibraryGame>> = _allGames.asStateFlow()
+
     private val _isOffline = MutableStateFlow(false)
     private val _hasCredentials = MutableStateFlow<Boolean?>(null) // null = unknown
 
     private val _uiState = MutableStateFlow<LibraryUiState>(LibraryUiState.Loading)
     val uiState: StateFlow<LibraryUiState> = _uiState.asStateFlow()
 
+    fun setSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
+
     init {
-        // Combine all games + selected tab → filtered uiState
+        // Combine all games + selected tab + search query → filtered uiState
         viewModelScope.launch {
-            combine(_allGames, _selectedTabIndex, _isOffline, _hasCredentials) { games, tabIndex, offline, hasCreds ->
+            combine(_allGames, _selectedTabIndex, _searchQuery, _isOffline, _hasCredentials) { games, tabIndex, query, offline, hasCreds ->
                 when {
                     hasCreds == false -> LibraryUiState.NoCredentials
                     hasCreds == null -> LibraryUiState.Loading
@@ -56,7 +65,7 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
                             2 -> games.filter { it.platform == Platform.STEAM }
                             3 -> games.filter { it.platform == Platform.PLAYSTATION }
                             else -> games // 0 = All
-                        }
+                        }.filter { it.title.contains(query, ignoreCase = true) }
                         LibraryUiState.Success(games = filtered, isOffline = offline)
                     }
                 }

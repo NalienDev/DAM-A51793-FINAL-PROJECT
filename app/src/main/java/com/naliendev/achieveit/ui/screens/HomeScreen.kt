@@ -10,33 +10,65 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.Gamepad
 import androidx.compose.material.icons.outlined.Insights
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import com.naliendev.achieveit.ui.models.LibraryGame
 import com.naliendev.achieveit.ui.theme.*
+import com.naliendev.achieveit.ui.viewmodel.LibraryUiState
+import com.naliendev.achieveit.ui.viewmodel.LibraryViewModel
+import com.naliendev.achieveit.ui.viewmodel.ProfileViewModel
 import com.google.firebase.auth.FirebaseAuth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen(onGameClick: () -> Unit, onLogoutClick: () -> Unit = {}) {
+fun HomeScreen(
+    onGameClick: (String) -> Unit,
+    onLogoutClick: () -> Unit = {}
+) {
     val auth = FirebaseAuth.getInstance()
-    val currentUser = auth.currentUser
-    val accountName = currentUser?.displayName?.takeIf { it.isNotBlank() }
-        ?: currentUser?.email?.substringBefore("@")?.replaceFirstChar { it.uppercase() }
-        ?: "Player"
+    
+    // ViewModels
+    val libraryViewModel: LibraryViewModel = viewModel()
+    val profileViewModel: ProfileViewModel = viewModel()
+
+    val profileState by profileViewModel.uiState.collectAsState()
+    val libraryState by libraryViewModel.uiState.collectAsState()
+
+    // Determine stats — completion rate comes from ProfileViewModel to stay in sync
+    val (totalGamesStr, totalAchievementsStr, continuePlayingGames) = when (val state = libraryState) {
+        is LibraryUiState.Success -> {
+            val games = state.games
+            val totalGames = games.size
+            val totalAchievements = games.sumOf { it.earnedTrophies }
+
+            // In-progress games first (> 0% and < 100%), then fall back to all games by recency
+            val inProgress = games.filter { it.progressFraction > 0f && it.progressFraction < 1.0f }
+            val displayGames = if (inProgress.isNotEmpty()) inProgress else games
+
+            Triple(totalGames.toString(), totalAchievements.toString(), displayGames)
+        }
+        else -> Triple("0", "0", emptyList())
+    }
+
+    // Completion rate always sourced from ProfileViewModel (identical formula to Profile screen)
+    val completionRateStr = profileState.completionRate
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -65,25 +97,24 @@ fun HomeScreen(onGameClick: () -> Unit, onLogoutClick: () -> Unit = {}) {
                 Text("AchieveIt", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, contentDescription = "Search", tint = TextPrimary)
-                Spacer(modifier = Modifier.width(16.dp))
-                Icon(Icons.Default.Notifications, contentDescription = "Notifications", tint = TextPrimary)
-                Spacer(modifier = Modifier.width(16.dp))
                 Icon(
                     Icons.Default.ExitToApp,
                     contentDescription = "Logout",
                     tint = TextPrimary,
-                    modifier = Modifier.clickable {
-                        auth.signOut()
-                        onLogoutClick()
-                    }
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable {
+                            auth.signOut()
+                            onLogoutClick()
+                        }
+                        .padding(8.dp)
                 )
             }
         }
 
         // Greeting
         Column(modifier = Modifier.padding(horizontal = 24.dp)) {
-            Text("Hello, $accountName", color = TextPrimary, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+            Text("Hello, ${profileState.displayName}", color = TextPrimary, fontSize = 32.sp, fontWeight = FontWeight.Bold)
             Text(
                 "Ready to unlock your next achievement?",
                 color = TextSecondary,
@@ -92,21 +123,6 @@ fun HomeScreen(onGameClick: () -> Unit, onLogoutClick: () -> Unit = {}) {
             )
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 64.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                "Stats and Games will appear here",
-                color = TextSecondary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
-        
-        /* Placeholder UI Commented Out
         // Stats Grid
         Row(
             modifier = Modifier
@@ -118,14 +134,14 @@ fun HomeScreen(onGameClick: () -> Unit, onLogoutClick: () -> Unit = {}) {
                 modifier = Modifier.weight(1f),
                 icon = { Icon(Icons.Outlined.Gamepad, contentDescription = null, tint = PurplePrimary) },
                 title = "TOTAL GAMES",
-                value = "124",
+                value = totalGamesStr,
                 trend = "+2"
             )
             StatCard(
                 modifier = Modifier.weight(1f),
                 icon = { Icon(Icons.Outlined.EmojiEvents, contentDescription = null, tint = PurpleLight) },
                 title = "ACHIEVEMENTS",
-                value = "1,452",
+                value = totalAchievementsStr,
                 trend = "+45"
             )
         }
@@ -149,7 +165,7 @@ fun HomeScreen(onGameClick: () -> Unit, onLogoutClick: () -> Unit = {}) {
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("COMPLETION", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text("68%", color = TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                Text(completionRateStr, color = TextPrimary, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -165,60 +181,103 @@ fun HomeScreen(onGameClick: () -> Unit, onLogoutClick: () -> Unit = {}) {
             Text("View All", color = PurplePrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }
 
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 24.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Mock items
-            items(2) { index ->
-                GameCardMock(
-                    title = if (index == 0) "Cyber Nexus 2077" else "Elder Realms",
-                    subtitle = if (index == 0) "Played 2h ago" else "Played yesterday",
-                    progress = if (index == 0) 0.85f else 0.42f,
-                    onClick = onGameClick
-                )
+        if (continuePlayingGames.isEmpty()) {
+            // Mock items if no integration is connected yet
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(2) { index ->
+                    val title = if (index == 0) "Cyber Nexus 2077" else "Elder Realms"
+                    val subtitle = if (index == 0) "Played 2h ago" else "Played yesterday"
+                    val progress = if (index == 0) 0.85f else 0.42f
+                    GameCardMock(
+                        title = title,
+                        subtitle = subtitle,
+                        progress = progress,
+                        onClick = {}
+                    )
+                }
+            }
+        } else {
+            LazyRow(
+                contentPadding = PaddingValues(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(continuePlayingGames, key = { it.id }) { game ->
+                    RealGameCardHome(game = game, onClick = { onGameClick(game.id) })
+                }
             }
         }
 
-        // Recommended Next
-        Text(
-            "Recommended Next",
-            color = TextPrimary,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 24.dp, top = 32.dp, bottom = 16.dp)
-        )
+    }
+}
 
+data class Quadruple<T1, T2, T3, T4>(val first: T1, val second: T2, val third: T3, val fourth: T4)
+
+@Composable
+fun RealGameCardHome(game: LibraryGame, onClick: () -> Unit) {
+    val progress = game.progressFraction
+    Column(
+        modifier = Modifier
+            .width(160.dp)
+            .clickable { onClick() }
+    ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 24.dp, end = 24.dp, bottom = 32.dp)
+                .height(200.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(SurfaceDark)
-                .padding(16.dp)
+                .background(SurfaceDark),
+            contentAlignment = Alignment.BottomStart
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
+            AsyncImage(
+                model = game.imageUrl,
+                contentDescription = game.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            // Dark gradient overlay at the bottom for text readability
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.8f)),
+                            startY = 150f
+                        )
+                    )
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(12.dp)
+            ) {
+                LinearProgressIndicator(
+                    progress = { progress },
                     modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(PurpleDark),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Outlined.EmojiEvents, contentDescription = null, tint = PurpleLight)
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Grand Explorer", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                    Text("Visit every district in Neo-Tokyo", color = TextSecondary, fontSize = 12.sp)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text("50G", color = PurpleLight, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Text("95% Rare", color = TextSecondary, fontSize = 12.sp)
-                }
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp)),
+                    color = PurplePrimary,
+                    trackColor = ProgressTrack
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("${(progress * 100).toInt()}% Complete", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
         }
-        */
+        Spacer(modifier = Modifier.height(12.dp))
+        Text(
+            game.title,
+            color = TextPrimary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(game.platform.displayName, color = TextSecondary, fontSize = 12.sp)
     }
 }
 
@@ -267,7 +326,7 @@ fun GameCardMock(title: String, subtitle: String, progress: Float, onClick: () -
                 .fillMaxWidth()
                 .padding(12.dp)) {
                 LinearProgressIndicator(
-                    progress = progress,
+                    progress = { progress },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(4.dp)
@@ -284,3 +343,4 @@ fun GameCardMock(title: String, subtitle: String, progress: Float, onClick: () -
         Text(subtitle, color = TextSecondary, fontSize = 12.sp)
     }
 }
+

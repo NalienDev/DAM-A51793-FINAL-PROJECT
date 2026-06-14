@@ -18,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -26,13 +27,27 @@ import com.naliendev.achieveit.ui.models.MessageSender
 import com.naliendev.achieveit.ui.theme.*
 import com.naliendev.achieveit.ui.viewmodel.AIChatViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrophieScreen(
     viewModel: AIChatViewModel = viewModel()
 ) {
     val messages = viewModel.messages
     val isLoading by viewModel.isLoading
+    
+    TrophieScreenContent(
+        messages = messages,
+        isLoading = isLoading,
+        onSendMessage = { viewModel.sendMessage(it) }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TrophieScreenContent(
+    messages: List<ChatMessage>,
+    isLoading: Boolean,
+    onSendMessage: (String) -> Unit
+) {
     val listState = rememberLazyListState()
     var inputText by remember { mutableStateOf("") }
 
@@ -132,7 +147,7 @@ fun TrophieScreen(
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                         keyboardActions = KeyboardActions(onSend = {
                             if (inputText.isNotBlank()) {
-                                viewModel.sendMessage(inputText)
+                                onSendMessage(inputText)
                                 inputText = ""
                             }
                         })
@@ -143,7 +158,7 @@ fun TrophieScreen(
                     IconButton(
                         onClick = {
                             if (inputText.isNotBlank()) {
-                                viewModel.sendMessage(inputText)
+                                onSendMessage(inputText)
                                 inputText = ""
                             }
                         },
@@ -201,6 +216,23 @@ fun MessageBubble(message: ChatMessage) {
             color = TextSecondary,
             fontSize = 10.sp,
             modifier = Modifier.padding(top = 4.dp, start = 4.dp, end = 4.dp)
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TrophieScreenPreview() {
+    val sampleMessages = listOf(
+        ChatMessage(text = "Hello! I'm Trophie, your gaming assistant. How can I help you today?", sender = MessageSender.AI),
+        ChatMessage(text = "Can you help me find some easy platinum trophies?", sender = MessageSender.USER),
+        ChatMessage(text = "Of course! There are many games with relatively easy platinum trophies, like 'My Name is Mayo' or 'Ratchet & Clank: Rift Apart'.", sender = MessageSender.AI)
+    )
+    AchieveItTheme {
+        TrophieScreenContent(
+            messages = sampleMessages,
+            isLoading = false,
+            onSendMessage = {}
         )
     }
 }

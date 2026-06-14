@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -44,6 +45,9 @@ fun LibraryScreen(
     val viewModel: LibraryViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsState()
     val selectedTabIndex by viewModel.selectedTabIndex.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    
+    var isSearchExpanded by remember { mutableStateOf(false) }
 
     val tabs = listOf("All", "RetroAchievements", "Steam", "PlayStation")
 
@@ -53,35 +57,80 @@ fun LibraryScreen(
             .background(BackgroundDark)
     ) {
         // Top Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(24.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(PurplePrimary),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(Icons.Outlined.Gamepad, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Text("Library", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Search, contentDescription = "Search", tint = TextPrimary)
-                Spacer(modifier = Modifier.width(16.dp))
-                Icon(
-                    Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = TextPrimary,
-                    modifier = Modifier.clickable { onSettingsClick() }
+        if (isSearchExpanded) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.setSearchQuery(it) },
+                    placeholder = { Text("Search games...", color = TextSecondary) },
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = SurfaceDark,
+                        unfocusedContainerColor = SurfaceDark,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    trailingIcon = {
+                        IconButton(onClick = {
+                            viewModel.setSearchQuery("")
+                            isSearchExpanded = false
+                        }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close search", tint = TextPrimary)
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
                 )
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(PurplePrimary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Outlined.Gamepad, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Library", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Search,
+                        contentDescription = "Search",
+                        tint = TextPrimary,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable { isSearchExpanded = true }
+                            .padding(8.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        tint = TextPrimary,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .clickable { onSettingsClick() }
+                            .padding(8.dp)
+                    )
+                }
             }
         }
 

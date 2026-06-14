@@ -35,6 +35,8 @@ import com.naliendev.achieveit.ui.theme.TextSecondary
 import com.naliendev.achieveit.ui.theme.SurfaceDark
 import com.google.firebase.auth.FirebaseAuth
 import com.naliendev.achieveit.ui.screens.TrophieScreen
+import com.naliendev.achieveit.ui.screens.ProfileScreen
+import com.naliendev.achieveit.ui.screens.EditProfileScreen
 
 enum class Screen(val route: String, val title: String, val icon: ImageVector?) {
     Login("login", "Login", null),
@@ -42,6 +44,7 @@ enum class Screen(val route: String, val title: String, val icon: ImageVector?) 
     Library("library", "Library", Icons.AutoMirrored.Filled.LibraryBooks),
     Trophie("trophie", "Trophie", Icons.Filled.AutoAwesome),
     Profile("profile", "Profile", Icons.Filled.Person),
+    EditProfile("edit_profile", "Edit Profile", null),
     GameDetails("game_details/{gameId}", "Game Details", null),
     Settings("settings", "Settings", null),
     SignUp("signup", "Sign Up", null)
@@ -132,8 +135,8 @@ fun AchieveItApp() {
             }
             composable(Screen.Home.route) {
                 HomeScreen(
-                    onGameClick = {
-                        // Home screen doesn't have real game IDs yet; navigate without ID
+                    onGameClick = { gameId ->
+                        navController.navigate("game_details/$gameId")
                     },
                     onLogoutClick = {
                         navController.navigate(Screen.Login.route) {
@@ -175,7 +178,26 @@ fun AchieveItApp() {
                 TrophieScreen()
             }
             composable(Screen.Profile.route) {
-                // Placeholder
+                ProfileScreen(
+                    onEditProfileClick = {
+                        navController.navigate(Screen.EditProfile.route)
+                    },
+                    onLogoutClick = {
+                        navController.navigate(Screen.Login.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                    onSettingsClick = {
+                        navController.navigate(Screen.Settings.route)
+                    }
+                )
+            }
+            composable(Screen.EditProfile.route) {
+                EditProfileScreen(
+                    onBackClick = {
+                        navController.popBackStack()
+                    }
+                )
             }
         }
     }
