@@ -11,6 +11,8 @@ import com.naliendev.achieveit.ui.models.LibraryGame
 import com.naliendev.achieveit.ui.models.Platform
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.supervisorScope
 
 sealed class LibraryUiState {
     object NoCredentials : LibraryUiState()
@@ -134,11 +136,18 @@ class LibraryViewModel(application: Application) : AndroidViewModel(application)
     fun refresh() {
         viewModelScope.launch {
             try {
-                val raJob = launch { raRepository.refreshFromNetwork() }
-                val psnJob = launch { psnRepository.refreshFromNetwork() }
-                raJob.join()
-                psnJob.join()
-                _isOffline.value = false
+                supervisorScope {
+                    val raJob = async { raRepository.refreshFromNetwork() }
+                    val psnJob = async { psnRepository.refreshFromNetwork() }
+                    try {
+                        raJob.await()
+                        psnJob.await()
+                        _isOffline.value = false
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        _isOffline.value = true
+                    }
+                }
             } catch (e: Exception) {
                 e.printStackTrace()
                 _isOffline.value = true
