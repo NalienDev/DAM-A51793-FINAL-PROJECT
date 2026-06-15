@@ -285,15 +285,27 @@ I reviewed each stage to verify correctness, catch structural issues (e.g., cred
 
 I managed the project using Git, with the repository hosted on GitHub. The repository was initialized and connected via Android Studio's built-in Source Control panel. Commits were made incrementally at meaningful milestones — initial project scaffold, database schema finalization, each API integration, Firebase integration, AI assistant implementation, and UI polish passes.
 
-Commit messages follow a conventional prefix style (`feat:`, `fix:`, `chore:`, `refactor:`) to clearly communicate the nature of each change. The `config.properties` file containing API keys was tracked initially but was subsequently removed from the repository via `git rm --cached` to prevent credential exposure, and added to `.gitignore` to prevent future accidental commits.
+The `config.properties` file containing API keys was tracked initially but was subsequently removed from the repository via `git rm --cached` to prevent credential exposure, and added to `.gitignore` to prevent future accidental commits.
 
 ## 12. Difficulties and Lessons Learned
 
-*(To be completed)*
+**Offline Cache Not Loading on Startup**
+One of the more subtle issues encountered was that the Room cache was being populated correctly, but the app would not load that data on startup: it would simply show an empty library until a network response arrived. The root cause was that Firebase Realtime Database, by default, requires an active network connection before serving any data, bypassing the local Room cache entirely on the first read. The fix was to explicitly enable Firebase's own disk persistence via `FirebaseDatabase.getInstance().setPersistenceEnabled(true)`, which allows Firebase to serve locally cached data immediately on launch while the network refresh runs in the background. This reinforced the importance of understanding the initialization order between Firebase and the local cache layer.
+
+**PlayStation Network Integration**
+The PSN integration was by far the most challenging of the three platforms. Unlike RetroAchievements and Steam, Sony does not provide an official public API, which meant relying on community-documented authentication flows and unofficial endpoints. The most time-consuming part was identifying a working OAuth client ID and secret, as the available documentation is fragmented and frequently outdated. This integration required significant trial and error and taught me to approach undocumented APIs with patience and a systematic testing mindset.
+
+**AI Assistant — API Connectivity**
+The initial AI assistant implementation targeted the NVIDIA NIM API, but the app was unable to reach it from the Android HTTP client. After investigation, the solution was to switch to **Groq** as the inference provider, which exposes an OpenAI-compatible API surface — meaning the existing `AIAssistantOpenAI` implementation required no structural changes beyond updating the base URL and model identifier. This highlighted the practical value of designing the `AIAssistant` abstraction layer around a provider-agnostic interface from the start.
 
 ## 13. Future Improvements
 
-*(To be completed)*
+- **Playtime Tracking**: Surface individual game playtime on the Game Detail screen for Steam games, where the API already exposes this data, giving users a more complete picture of each game's history alongside its achievement progress.
+- **RetroAchievements Points**: Display the point value of each individual achievement on the Game Detail screen, and show total points earned alongside the existing completion percentage.
+- **Social Features**: Allow users to follow other AchieveIt accounts, view their public library, and compare completion rates on shared games, adding a competitive and community dimension to the tracker.
+- **Multi-Account Support**: Enable the addition of multiple accounts per platform (e.g., two Steam libraries or two PSN profiles) to support users who maintain separate gaming accounts.
+- **Additional Platform Integrations**: Extend the tracker to cover further platforms such as Xbox (via the OpenXBL API), GOG Galaxy, and Epic Games Store, consolidating an even broader range of gaming activity into a single dashboard.
+- **Achievement Sorting and Filtering**: Add sorting options to the Game Detail screen (by unlock date, rarity, point value) so users can plan their next achievements more strategically.
 
 ## 14. AI Usage Disclosure
 
